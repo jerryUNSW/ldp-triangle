@@ -193,37 +193,20 @@ void BiGraph::loadGraph(string dir)
 
 
 bool BiGraph::has(int i, int j){
-	if(this->is_bipartite){
-		return std::find(neighbor[i].begin(), neighbor[i].end(), j) != neighbor[i].end(); 
-	}
-	else{
-
-		// bool old_res = std::find(neighbor[i].begin(), neighbor[i].end(), j) != neighbor[i].end(); 
-		// return old_res;
-		// if (i > j) std::swap(i, j); // Ensure i < j for consistency
-		
-		// bool new_res; 
-		// if(i<j){
-		// 	new_res = edge_map[i].find(j) != edge_map[i].end();
-			
-		// 	// edge_map.find(make_pair(i, j)) != edge_map.end();
-		// }else{
-		// 	// new_res = edge_map.find(make_pair(j, i)) != edge_map.end();
-		// 	new_res = edge_map[j].find(i) != edge_map[j].end();
-		// }
-
-
-		// edge_vector based approach 
-		bool new_res = edge_vector[i].find(j) != edge_vector[i].end(); 
-		// assert(new_res == old_res); 
-		return new_res;
-	}
+	// if(this->is_bipartite){
+	return std::find(neighbor[i].begin(), neighbor[i].end(), j) != neighbor[i].end(); 
+	// }
+	// else{
+	// 	// edge_vector based approach 
+	// 	bool new_res = edge_vector[i].find(j) != edge_vector[i].end(); 
+	// 	return new_res;
+	// 	// it is possible that edge_vector[i][j] 
+	// }
 }
 
 
 void BiGraph::load_general_graph(string dir)
 {
-
 	unsigned int n__, m__;
 
 	int u, v, r;
@@ -231,7 +214,6 @@ void BiGraph::load_general_graph(string dir)
 	string edgeFile = dir; 
 
 	FILE * edgeGraph = fopen(edgeFile.c_str(), "r");
-
 
 	if (fscanf(edgeGraph, "%d\n%d", &n__, &m__) != 2)
 	{
@@ -253,7 +235,12 @@ void BiGraph::load_general_graph(string dir)
 
 
 	// edge_vector based approahc 
-	edge_vector.resize(this-> num_vertices);
+	// if(memory_efficient){
+	// 	__edge_vector.resize(this-> num_vertices);
+	// }else{
+	// 	edge_vector.resize(this-> num_vertices);
+	// }
+
 
 	// initialize a_mat 
 	// a_mat.resize(this-> num_vertices); 
@@ -267,13 +254,19 @@ void BiGraph::load_general_graph(string dir)
 			exit(1);
 		}
 		// keep record of neighbors and degrees
+
+		// no duplicate edges in this way
+		// if(u>=v){
+		// 	continue;
+		// }
+
 		neighbor[u].push_back(v);
 		neighbor[v].push_back(u);		
+		// do we really need this for the original graph G?
+		// edge_vector[u][v] = true;
+		// edge_vector[v][u] = true;
 
-		// do something about a_mat 
-	
-		edge_vector[u][v] = true;
-		edge_vector[v][u] = true; 
+		// false indicate 0 entry 
 
 		// counting the visited edges
 		edge_counter++;
@@ -282,15 +275,12 @@ void BiGraph::load_general_graph(string dir)
 	// computing the maximum degree.
 	for(int u=0;u<num_nodes();u++){
 		degree[u] = neighbor[u].size();
-		// should we use an unordered_set to store the neighbors 
 		v1_max_degree = v1_max_degree > degree[u] ? v1_max_degree : degree[u]; 
 	}
-	
-
-	// verify the number of edges.
-	assert(edge_counter == this-> num_edges ); 
 
 	cout<<"|E| = "<<num_edges<<endl;
+
+	cout<<"counted edges = "<<edge_counter <<endl;
 
 	fclose(edgeGraph);
 }
@@ -325,21 +315,17 @@ void BiGraph::addEdge(vid_t u, vid_t v)
 	neighbor[u].push_back(v);
 	neighbor[v].push_back(u);
 
-	// the degrees, num_edges and max degrees can be computed on O(n) time. 
-	// currently we are 
-
 	degree[u]++; 
 	degree[v]++;
 	num_edges++;
-	v1_max_degree = v1_max_degree > degree[u] ? v1_max_degree : degree[u]; 
-	v2_max_degree = v2_max_degree > degree[v] ? v2_max_degree : degree[v]; 
 
-	if(!is_bipartite){
+	if(is_bipartite){
+		v1_max_degree = v1_max_degree > degree[u] ? v1_max_degree : degree[u]; 
+		v2_max_degree = v2_max_degree > degree[v] ? v2_max_degree : degree[v]; 
+	}else{
 		edge_vector[u][v] = true;
-		edge_vector[v][u] = true; 
+		edge_vector[v][u] = true;
 	}
-
-	
 }
 
 // u1, u2 are real ids
@@ -375,3 +361,4 @@ void BiGraph::deleteEdge(vid_t u1, vid_t u2)
 	}
 }
 // this function tests the validity of the deleteEdge function.
+

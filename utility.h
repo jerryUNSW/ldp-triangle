@@ -16,6 +16,10 @@
 #include <queue>
 #include <map>
 // #include <string>
+
+#include <set>      
+
+
 #include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +57,17 @@ using namespace std;
 
 #define MIN(a, b) (a <= b ? a : b)
 #define MAX(a, b) (a >= b ? a : b)
+
+struct PairHash {
+    template <typename T1, typename T2>
+    size_t operator() (const pair<T1, T2>& p) const {
+        auto hash1 = hash<T1>{}(p.first);
+        auto hash2 = hash<T2>{}(p.second);
+        return hash1 ^ hash2; // Combine hashes using XOR
+    }
+};
+
+
 
 extern long double power(long double base, int exponent) ;
 
@@ -119,6 +134,8 @@ long double calculateRMSE(const std::vector<T>& predicted, const std::vector<T>&
 
     return std::sqrt(sumSquaredError / predicted.size());
 }
+
+
 
 template <typename T>
 long double calculateMAE(const std::vector<T>& predicted, const std::vector<T>& actual) {

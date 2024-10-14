@@ -1,8 +1,13 @@
-#include "abcore.h"
+#include "counting.h"
+
+#define ONE_MILLION 1000000
+
 using namespace std;
 using namespace std::chrono; 
 
 int num_rounds;
+
+unsigned long long int real_val;
 
 vector<long double> estis, relative_errors;
 
@@ -17,15 +22,15 @@ double gamma__ ;
 
 long double Eps, Eps0, Eps1, Eps2;  
 
+vector<int> high_degree_vertices;
+
 // private degrees: 
-vector<int> priv_deg; 
+vector<double> priv_deg; 
 int priv_dmax_1, priv_dmax_2; 
 
 int iteration;
 
 extern int alpha;
-
-long double real = 0;
 
 extern stats::rand_engine_t engine;  // Declare the engine as extern
 
@@ -40,11 +45,28 @@ double d1, d2, epsilon; // these are global variables
 
 int K2 = 5;
 
-long double vertex_ratio = 1 ; 
-
 bool scalability = false; 
 
+
+extern bool sampling_vertex_pairs;
+
+extern double vertex_ratio;
+
 int algo_switch ; 
+
+int deg_threshold; 
+
+extern bool edge_centric; 
+
+vector<int> tri_cnt;
+
+vector<vector<double>> tri_cnt_estis;
+// just look at the variance of these estimates 
+// make it a 2D array. 
+
+bool budget_optimation = true; 
+
+vector<unordered_map<int, bool>> sup_vector; 
 
 int main(int argc, char *argv[]) {
 
@@ -57,28 +79,17 @@ int main(int argc, char *argv[]) {
 	num_rounds = atoi(argv[3]); 
 
 	// by default this should be 0 
-	int num_threads_param = atoi(argv[4]);// this is not even used. maybe we could use this to 
+	// int num_threads_param = atoi(argv[4]);// this is not even used
 
-	// if(scalability){
-	// 	vertex_ratio = num_threads_param*1.0/10;
-	// 	num_threads_param = 0; 
-	// }else{
-		vertex_ratio = 1;
-	// }
+	vertex_ratio = stod(argv[4]);
 
-	cout<<"ratio of verticed used = "<<vertex_ratio <<endl; 
-
-	// 
 	algo_switch = atoi(argv[5]);
-	// 0: single-source wedge-based triangle counting. 
-	// 1: double-source wedge-based triangle counting. 
-	// number of q vertices to sample // we can set this to 100 by default 
-	
-	bool eval_time = false; 
-	bool eval_com = false;
+	//
 
-	// const int K = 10000; // maybe i want to run 1000 times for better convergence. 
-	
+	// we use algo switch as the deg_threshold 
+
+	bool eval_time = false, eval_com = false;
+
 	// initialize time
 	RR_time=0, server_side_time=0, naive_server_side=0;
 
@@ -87,235 +98,189 @@ int main(int argc, char *argv[]) {
 	bool is_bipartite  = false ; 
 	BiGraph g(dataset, is_bipartite);
 
-
-	
-	
     unsigned long seed__;
-    long double esti_btf___;
+    long double esti_val_;
     long double sum_esti_btf___ = 0.0;
     const int num_runs = num_rounds;
     
-    // Calculate the real BTF value
-    // long double real = BFC_EVP(g);
-	omp_set_num_threads(num_threads_param);
-
-	long int real = triangle_count(g);
-
-	// cout<<"tri = "<<real <<endl;
-	printf("tri = %ld\n", real);
+    // Calculate the real_val BTF value
+    // long double real_val = BFC_EVP(g);
+	// omp_set_num_threads(num_threads_param);
 
 
-
-	////////////////////////////////////////////////////////////
-	/*
-	cout<<" |V| = "<<g.num_nodes()<<endl;
-	long double num_pairs = g.num_nodes() * (g.num_nodes() -1)/2;
-
-	cout<<"num pairs = "<<num_pairs <<endl;
-
-	long double num_pair_of_pairs = num_pairs * (num_pairs -1)/2;
-	cout<<"num of pairs of pairs "<< num_pair_of_pairs <<endl;
+	cout<<"vertex_ratio = "<<vertex_ratio <<endl;
 
 
-    // Example graph with nodes and edges
-    int num_nodes = g.num_nodes();
-    std::vector<std::pair<int, int>> pairs;
-    
-    // Generate all pairs (u, v) where u < v
-    for (int u = 0; u < num_nodes; ++u) {
-        for (int v = u + 1; v < num_nodes; ++v) {
-            pairs.push_back({u, v});
-        }
-    }
-	
-    // Vector to store all unique pairs of pairs
-	long double cnt = 0; 
-	long double cnt2 = 0; 
+	cout<<"n = "<<g.num_nodes()<<endl;
 
-    // Generate all unique pairs of pairs
-    for (size_t i = 0; i < pairs.size(); ++i) {
-        for (size_t j = i + 1; j < pairs.size(); ++j) {
-            const auto& p1 = pairs[i];
-            const auto& p2 = pairs[j];
-            // Ensure that the pairs are distinct
-			if (p1 != p2) {
-				int u1 = p1.first;
-				int v1 = p1.second;
-				int u2 = p2.first;
-				int v2 = p2.second;
+	std::unordered_map<std::string, long int> dataset_map = {
+		// {"../graphs/test3.edges", 85334445},
+		{"../graphs/email.edges", 727044},
+		{"../graphs/youtube.edges", 3056386},
+		{"../graphs/wiki.edges", 9203519},
+		{"../graphs/gow.edges", 2273138},
+		{"../graphs/dblp.edges", 2224385},
+		{"../graphs/gplus.edges", 1073677742},
+		{"../graphs/skitter.edges", 28769868},
+		{"../graphs/imdb.edges",  3856982376}, 
+		{"../graphs/lj.edges", 177820130},
+		{"../graphs/orkut.edges", 627584181}
+	};
 
-				// Store the vertices in a vector
-				std::vector<int> cycle = {u1, v1, u2, v2};
-				// think about how the 4-cycles are rotated 
+	tri_cnt.resize(g.num_nodes()); 
+	fill(tri_cnt.begin(), tri_cnt.end(),0); 
 
-				if(u1== u2){
-					if(v1<v2){
-						cnt++;
-					}
-					if(v1>v2){
-						cnt++;
-					}
-				}
-				if(u1 < u2){
-					if(v1< u2 && u2 < v2){
-						cnt++;
-						// need to check u1, v1, u2, v2 is a four cycle? 
-						if(g.has(u1, v1)  && g.has(v1, u2) && g.has(u2, v2) && g.has(v2, u1) ){
-							cnt2++;
-				
-							// Print the sorted 4-cycle
-							cout<<"cycle 1: ";
-							for (int vertex : cycle) {
-								std::cout << vertex << " ";
-							}
-							std::cout << std::endl;
-						}
-					}
-					if(v1== u2 && u2 < v2){
-						cnt++;
-					}
-					if(u2< v1 && v1 < v2){
-						cnt++;
-						if(g.has(u1, v1)  && g.has(v1, u2) && g.has(u2, v2) && g.has(v2, u1) ){
-							cnt2++;
-							cout<<"cycle 2: ";
-							for (int vertex : cycle) {
-								std::cout << vertex << " ";
-							}
-							std::cout << std::endl;
-						}
-					}
-					if(u2 < v1 && v2 == v1){
-						cnt++;
-
-						// need to consider this as well. 
-						// if(g.has(u1, v1) && g.has(u2, v1) ){
-						// 	for(auto xxx : g.neighbor[u1]){
-						// 		if(xxx==v1) continue;
-						// 		if(g.has(u2,xxx)){
-						// 			cnt2++;
-						// 		}
-						// 	}
-						// }
-
-					}
-					if(u2 < v2 && v2 < v1){
-
-						// cnt++;
-						// if(g.has(u1, v1)  && g.has(v1, u2) && g.has(u2, v2) && g.has(v2, u1) ){
-						// 	cnt2++;
-						// 	cout<<"cycle 3: ";
-						// 	for (int vertex : cycle) {
-						// 		std::cout << vertex << " ";
-						// 	}
-						// 	std::cout << std::endl;
-						// }
-					}
-				}
-				// cnt++;
-			}
-        }
-    }
-	// it looks like different pairs of <u, v> may correspond to the same 4-cycle. 
-    cout << "Number of unique pairs of pairs: " << cnt<< std::endl;
-
-	cout<< "count 2 = " << cnt2 <<endl;
-
-    int four_cycle_count = 0;
-    // Iterate through all pairs of vertices (u, v) where u < v
-    for (int u = 0; u < g.num_nodes(); ++u) {
-        for (int v = u + 1; v < g.num_nodes(); ++v) {
-            // Find common neighbors of u and v
-            vector<int> common_neighbors;
-			long double common_nb_size = 0;
-            for (auto w : g.neighbor[v]) {
-				if ( g.has(u,w) ) {
-					common_nb_size++;
-                }
-            }
-			four_cycle_count += common_nb_size * (common_nb_size-1)/2;
-        }
-    }
-	four_cycle_count /=2; 
-    cout << "Number of 4-cycles: " << four_cycle_count << endl;
-
-
-	exit(1);
+	auto it = dataset_map.find(dataset);
+	if(dataset_map.find(dataset) != dataset_map.end()){
+		real_val = it->second;
+	}else{
+		sup_vector.resize(g.num_nodes());
+		cout<<"len = "<<sup_vector.size()<<endl;
+		real_val = triangle_count(g);
+	}
+	printf("Triangle Count = %lld\n", real_val);
 
 
 
-	cout<<"Lower bound of Variance computation: "<<endl;
-	long double esp1__ = Eps * 0.7;
-	long double p__ = 1.0 / (exp(esp1__) + 1.0);
-	long double esp2__ = Eps - esp1__; 
 
-	long double gamma____ = (p__ * (1 - p__)) / pow((1 - 2 * p__), 2);
-	long double theta____ = pow((1 - p__), 2) / pow((1 - 2 * p__), 2);
 
-	long double S1 = 2 * g.num_edges * theta____ ; 
-	S1 += g.num_nodes() * (g.num_nodes() -1) * theta____ * gamma____ ; 
-	S1 /= pow( esp2__ ,2); 
-    for (int u = 0; u < g.num_nodes(); ++u) {
-        long double du = g.degree[u] * 1.0;
-        // Convert vector to unordered_set for faster operations
-        std::unordered_set<int> neighbors_u(g.neighbor[u].begin(), g.neighbor[u].end());
-        // Calculate |N(u) \ v| for each v
-        for (int v = u + 1; v < g.num_nodes(); ++v) {
-            // Calculate |N(u) \ {v}|, which is the size of N(u) minus 1 if v is a neighbor
-            long double sizeN_u_minus_v = neighbors_u.size() - (neighbors_u.count(v) > 0 ? 1 : 0);
 
-            S1 += sizeN_u_minus_v * pow(gamma____, 2);
+	map<int, int> degree_distribution;  // Using map to keep degrees sorted
+	unordered_set<int> degree_one_vertices;
+	int cnt = 0;
 
-            if (neighbors_u.count(v) > 0) { // Check if u is connected to v
-                S1 += sizeN_u_minus_v * gamma____;
-            }
-        }
-        S1 += gamma____ * du * (du - 1) / 2;
-    }
-	S1 /= 9; 
-	// cout<<"Lower bound of variance = "<< S1 <<endl; 
-	*/
+	int high_degree_count = 0; // Counter for vertices with degree >= threshold
+
+	// cout<<"deg_threshold = " << deg_threshold <<endl;
+
+	// Calculate the degree distribution
 
 	double txxx = omp_get_wtime();
-	for (int i = 0; i < num_runs; ++i) {
-        seed__ = rng();
-		cout<<"epsilon = "<<Eps <<endl;
-        
-		// also implement the naive triangle algorithm? 
 
-		esti_btf___ = wedge_based_triangle(g, seed__);
+	// for ( vertex_ratio = 1.0; vertex_ratio >= 0.001; vertex_ratio /= 10.0) {
+		// for each vertex sampling ratio, vary epsilon_1 
 
-        // sum_esti_btf___ += esti_btf___;
-		estis.push_back(esti_btf___); 
+		// if not using such an extreme sampling ratio, it cannot be run within reasonable time 
+		// if using such sampling, the effectiveness is undermined significantly. 
 
-        // Calculate relative error for current run
-		cout << "estimate = " << esti_btf___ << endl;
-        long double relative_error = abs(esti_btf___ - real) / real;
-		cout<<"relative error = "<<relative_error <<endl;
-        relative_errors.push_back(relative_error);
-		cout << endl;
-    }
+		// cout<<"vertex ratio = "<<vertex_ratio<<endl;
+		if(vertex_ratio==1){
+			sampling_vertex_pairs = false; 
+			cout<<"no vertex sampling"<<endl;
+		}else{
+			sampling_vertex_pairs = true; 
+			// cout << "total pairs = " << total_vertex_pairs << endl;
+			// cout << "need computation = " << total_vertex_pairs * vertex_ratio << endl;
+		}
+
+		// fix this. 
+		Eps0 = 0.1*Eps; 
+
+		// for find plot.
+		for (int kk = 1; kk<=9; kk++) {
+			if(kk==9){
+			// if(budget_optimation){
+				budget_optimation = true;
+				cout<<"compute epsilon1 ad hoc"<<endl;
+			}else{
+				budget_optimation = false; 
+				Eps1 = (Eps - Eps0)*0.5; 
+				Eps2 = (Eps - Eps0)*0.5; 
+				cout<<"basic setting"<<endl;
+				cout<<"Eps1 = "<<Eps1<<endl;
+				cout<<"Eps2 = "<<Eps2<<endl;
+			}
+			relative_errors.clear();
+			estis.clear();
+
+			for (int i = 0; i < num_runs; ++i) {
+				seed__ = rng();
+				if (algo_switch==1){
+					// PC algorithm
+					esti_val_ = efficient_wedge_based_triangle(g, seed__);
+				}
+				if (algo_switch==2){
+					// VC algorithm
+					esti_val_ = efficient_wedge_based_triangle(g, seed__);
+				}
+				// testing the weighted sampling
+				// esti_val_ = weighted_sampling_triangle(g, seed__);
+
+				// sum_esti_btf___ += esti_val_;
+				estis.push_back(esti_val_); 
+
+				// Calculate relative error for current run
+				cout << "estimate = " << esti_val_ << endl;
+				long double relative_error = abs(esti_val_ - real_val) / real_val;
+				cout<<"relative error = "<<relative_error <<endl;
+				relative_errors.push_back(relative_error);
+				cout << endl;
+			}	
+			// report mean relative errors:
+			cout << "# mean rel err = " << calculateMean(relative_errors) << endl;
+
+			long double loss = 0.0;
+			// long double mean_estis = calculateMean(estis);
+			for (size_t i = 0; i < estis.size(); ++i) {
+				loss += static_cast<long double>((estis[i] - real_val) * (estis[i] - real_val));
+			}
+			loss /= estis.size(); 
+
+			printf("# l2 loss = %.6Le\n", loss);
+		}
+
+
+	// }
+
 	double tyyy = omp_get_wtime();
-    // Compute mean relative error
+	double seconds = tyyy - txxx;
 
-    // long double mean_relative_error = 0.0;
-    // for (const auto& err : relative_errors) {
-    //     mean_relative_error += err;
-    // }
-    // mean_relative_error /= num_runs;
 
     // Output results
-	printf("# Mean = %Lf\n", calculateMean(estis));
+	// printf("# mean = %Lf\n", calculateMean(estis));
 
-    std::cout << "rel err = " << calculateMean(relative_errors) << std::endl;
+    // cout << "Mean rel err = " << calculateMean(relative_errors) << endl;
 
-    cout << "real count = " << real << endl;
+    cout << "real_val count = " << real_val << endl;
+
+	printf("time:%f\n", seconds);
 	
-	printf("# Variance = %Lf\n", calculateVariance(estis) );
 
+	
+	/*
+	// need to revisit this to better predict the L2 loss.
+	long double estimated_variance = 0; 
+	long double p__ = 1/(1 + exp(Eps1)); 
+	long double gamma__ = p__ * (1-p__) / pow(1-2*p__,2); 
+	long double lap_scale =  (1-p__) / (1-2*p__); 
+	lap_scale /= Eps2; 
+	
+	long double S1 =0, S2 = 0; 
+	for(int i=0;i<g.num_nodes();i++){
+
+		long double deg_u = g.degree[i]; 
+		S1 += (deg_u*(deg_u-1)/2);  // deg_u choose 2 
+		S2 += deg_u * deg_u;		// deg_u^2
+	}
+	
+	estimated_variance = gamma__ * S1 + 2 * pow(lap_scale,2) * S2; 
+	estimated_variance /= 9; 
+	*/
+
+	
+	
+	// what we learned is that high degree vertices will result in higher standard deviations. 
+	// how do we handle these vertices? 
+		
+	// variance is just the expected L2 loss. 
+	// printf("# Variance = %Lf\n", calculateVariance(estis) );
+
+	
+
+
+	// printf("# Estimated Variance = %Lf\n", estimated_variance );
 
 	// cout<<"Lower bound variance = " << S1 <<endl; 
-	double seconds = tyyy - txxx;
-	printf("time:%f\n", seconds);
+
 	return 0;
 }
