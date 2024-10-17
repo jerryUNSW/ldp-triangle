@@ -2,6 +2,65 @@
 #include "utility.h"
 // #include "mt19937ar.h"
 
+
+// Define global variables (no extern here)
+int num_rounds = 0;
+unsigned long long int real_val = 0;
+
+std::vector<long double> estis, relative_errors;
+
+long double p = 0.0; // Flipping probability
+double gamma__ = 0.0;
+
+long double Eps = 0.0, Eps0 = 0.0, Eps1 = 0.0, Eps2 = 0.0;
+
+std::vector<int> high_degree_vertices;
+std::vector<double> priv_deg;
+
+int priv_dmax_1 = 0, priv_dmax_2 = 0;
+int iteration = 0;
+int q_vertex = -1, x_vertex = -1;
+
+double d1 = 0.0, d2 = 0.0, epsilon = 0.0;
+
+int K2 = 5; // Constant for some parameter
+
+bool scalability = false;
+bool budget_optimization = true;
+bool sampling_one_round = false;
+bool edge_clipping = true;
+bool clipping = false;
+bool noisy_matrix_usage = false;
+bool sampling_noisy_graph = false;
+bool sampling_vertex_pairs = false;
+bool use_high_deg_vertices = false;
+
+double sample_ratio = 1.0;
+double vertex_ratio = 0.1;
+double p____ = 0.1; // Noisy edge sampling ratio
+
+int alpha = 150; // Edge clipping parameter
+int algo_switch = 0;
+int deg_threshold = 0;
+
+std::vector<int> tri_cnt;
+std::vector<std::vector<double>> tri_cnt_estis;
+std::vector<unordered_map<int, bool>> sup_vector;
+
+std::vector<int> upper_sample, lower_sample;
+
+long double RR_time = 0.0, server_side_time = 0.0, naive_server_side = 0.0;
+long double communication_cost = 0.0;
+
+bool count_per_vertex = false;
+bool count_per_edge = false;
+bool avg_switch_triangle = true;
+bool trim_vertices_triangle = false;
+bool skip_singleton = true;
+
+stats::rand_engine_t engine(std::time(0)); // Random engine initialization with current time
+
+
 long double add_geometric_noise(long double data, long double sensitivity, long double epsilon) {
     long double p__ = 1 - std::exp(-epsilon / sensitivity);
     std::random_device rd;

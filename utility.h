@@ -15,11 +15,7 @@
 #include <iostream>
 #include <queue>
 #include <map>
-// #include <string>
-
 #include <set>      
-
-
 #include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,15 +32,12 @@
 #include <omp.h>  // Add this line to include omp.h
 #include <cmath>
 
-// #include <type_traits>
-
-// for solving equations:
 #include <boost/math/tools/roots.hpp>
 // #include <nlopt.hpp>
 
 #include <gsl/gsl_multimin.h>
 
-// for LDP: 
+// LDP related
 // #include "mt19937ar.h"
 #include "MemoryOperation.h"
 #include "include/stats.hpp"
@@ -54,6 +47,61 @@ typedef int num_t;
 
 using namespace std;
 /** Macros **/
+
+extern int num_rounds;
+extern unsigned long long int real_val;
+
+extern std::vector<long double> estis, relative_errors;
+
+extern long double p; // Flipping probability, corresponding to Eps1
+extern double gamma__;
+
+extern long double Eps, Eps0, Eps1, Eps2;
+
+extern std::vector<int> high_degree_vertices;
+extern std::vector<double> priv_deg;
+
+extern int priv_dmax_1, priv_dmax_2;
+extern int iteration;
+extern int q_vertex, x_vertex;
+
+extern double d1, d2, epsilon;
+
+extern int K2; // Constant for some parameter
+
+extern bool scalability;
+extern bool budget_optimization;
+extern bool sampling_one_round;
+extern bool edge_clipping;
+extern bool clipping;
+extern bool noisy_matrix_usage;
+extern bool sampling_noisy_graph;
+extern bool sampling_vertex_pairs;
+extern bool use_high_deg_vertices;
+
+extern double sample_ratio;
+extern double vertex_ratio;
+extern double p____;
+
+extern int alpha; // Edge clipping parameter
+extern int algo_switch;
+extern int deg_threshold;
+
+extern std::vector<int> tri_cnt;
+extern std::vector<std::vector<double>> tri_cnt_estis;
+extern std::vector<unordered_map<int, bool>> sup_vector; // Support vector for noisy graph operations
+extern std::vector<int> upper_sample, lower_sample;
+
+extern long double RR_time, server_side_time, naive_server_side;
+extern long double communication_cost;
+
+extern bool count_per_vertex;
+extern bool count_per_edge;
+extern bool avg_switch_triangle;
+extern bool trim_vertices_triangle;
+extern bool skip_singleton;
+
+extern stats::rand_engine_t engine; // Declare the random engine as extern
 
 #define MIN(a, b) (a <= b ? a : b)
 #define MAX(a, b) (a >= b ? a : b)
@@ -66,8 +114,6 @@ struct PairHash {
         return hash1 ^ hash2; // Combine hashes using XOR
     }
 };
-
-
 
 extern long double power(long double base, int exponent) ;
 
