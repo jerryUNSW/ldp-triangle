@@ -4,3 +4,4 @@
 # Ignore object files
 *.o
 
+graphs/*.py
