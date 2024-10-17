@@ -1,0 +1,6 @@
+# Ignore Python files
+*.py
+
+# Ignore object files
+*.o
+
