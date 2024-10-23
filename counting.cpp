@@ -82,7 +82,7 @@ long double efficient_wedge_based_triangle(Graph& g, unsigned long seed) {
 		cout<<"edge sampling = "<<p____ <<endl;
 	}
 	
-	/*
+	
     if (algo_switch==1) {
         cout << "Pair Centric Algorithm" << endl;
 
@@ -161,7 +161,7 @@ long double efficient_wedge_based_triangle(Graph& g, unsigned long seed) {
 		}
 	}
     } 
-	*/
+	
 	
 	if (algo_switch==2) {
 		cout << "vertex-centric algorithm" << endl;
