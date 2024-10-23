@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project implements a triangle counting algorithm under edge LDP.
+This project implements triangle counting algorithms under edge LDP.
 
 ## Build Instructions
 
